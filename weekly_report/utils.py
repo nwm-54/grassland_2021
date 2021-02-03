@@ -9,7 +9,17 @@ from functools import reduce
 	HELPER FUNCTIONS	
 '''
 def write_to_csv(data, output='/home/vitran/data_test_jan18/missing_sensor_data.csv',mode='w'):
-	#mode = 'w' or 'a'
+	''' Write/Add 2-level nested list to a given csv file. 
+		Default mode are writing new csv file.
+
+	--Parameters:
+		data: list, two level nested list. ex: [[1,2,3],[4,5,6]]
+		output: str, file path for .csv
+		mode: char, 'w' for writing new file and 'a' for appending new data to an existing file
+	
+	--Return:
+		None
+	'''
 	if mode == 'w':
 		with open(output,'w') as outfile:
 			writer = csv.writer(outfile)
@@ -17,31 +27,72 @@ def write_to_csv(data, output='/home/vitran/data_test_jan18/missing_sensor_data.
 		outfile.close()
 	elif mode == 'a':
 		#only applies to daily report csv file
-		date_to_add = data[0][0]
-		all_dates_reversed = []
-		with open(output,'r') as outfile:
-			reader = csv.reader(outfile)
-			next(reader)
-			for line in reversed(list(reader)):
-				all_dates_reversed.append(line)
-		outfile.close()
+		# date_to_add = data[0][0]
+		# all_dates_reversed = []
+		# with open(output,'r') as outfile:
+		# 	reader = csv.reader(outfile)
+		# 	next(reader)
+		# 	for line in reversed(list(reader)):
+		# 		all_dates_reversed.append(line)
+		# outfile.close()
 
-		if len(all_dates_reversed) != 0:
-			index = 0
+		# if len(all_dates_reversed) != 0:
+		# 	index = 0
+		# 	cur_date_str = all_dates_reversed[index][0].split('/')
+		# 	cur_date = Date(cur_date_str[0], cur_date_str[1],cur_date_str[2])
+
+		# 	while date_to_add < cur_date and index<len(all_dates_reversed):
+		# 		cur_date_str = all_dates_reversed[index][0].split('/')
+		# 		cur_date = Date(cur_date_str[0], cur_date_str[1],cur_date_str[2])
+		# 		index += 1
+		# if len(all_dates_reversed) == 0 or date_to_add != cur_date: # if ==: the date is already recorded
+		with open(output,'a') as outfile:
+			writer = csv.writer(outfile)
+			writer.writerows(data)
+		outfile.close()
+	else:
+		raise Exception("invalid mode, chose 'w' or 'a'")		
+def date_not_inserted(data, output):
+	''' Check wheter the date was included in the output file or not
+
+	--Parameters:
+		data: list, two level nested list with Date objects at 0-indexed. ex: [[<Date object>],[<Date object>]]
+		output: str, file path for .csv
+	
+	--Return:
+		True if the date was not found in .csv file
+	'''
+	date_to_add = data[0][0]
+	all_dates_reversed = []
+	with open(output,'r') as outfile:
+		reader = csv.reader(outfile)
+		next(reader)
+		for line in reversed(list(reader)):
+			all_dates_reversed.append(line)
+	outfile.close()
+
+	if len(all_dates_reversed) != 0:
+		index = 0
+		cur_date_str = all_dates_reversed[index][0].split('/')
+		cur_date = Date(cur_date_str[0], cur_date_str[1],cur_date_str[2])
+
+		while date_to_add < cur_date and index<len(all_dates_reversed):
 			cur_date_str = all_dates_reversed[index][0].split('/')
 			cur_date = Date(cur_date_str[0], cur_date_str[1],cur_date_str[2])
+			index += 1
+	return len(all_dates_reversed) == 0 or date_to_add != cur_date  
 
-			while date_to_add < cur_date and index<len(all_dates_reversed):
-				cur_date_str = all_dates_reversed[index][0].split('/')
-				cur_date = Date(cur_date_str[0], cur_date_str[1],cur_date_str[2])
-				index += 1
-		if len(all_dates_reversed) == 0 or date_to_add != cur_date: # if ==: the date is already recorded
-			with open(output,'a') as outfile:
-				writer = csv.writer(outfile)
-				writer.writerows(data)
-			outfile.close()
-		
 def safe_cast(val, to_type=float, default=None):
+	''' Cast value into given type
+		Default type is float
+
+	--Parameters:
+		val: data to cast
+		to_type: data type
+		default: optional, default value if casted unsucessfully
+	--Return:
+		data of casted type
+	'''
 	try:
 		num = to_type(val)
 		if num < 0: return default
@@ -50,41 +101,104 @@ def safe_cast(val, to_type=float, default=None):
 		return default
 
 def is_valid_data(val):
+	''' Check if val is of float type and is positive
+
+	--Parameters:
+		val: data to check
+	
+	--Return:
+		True if data of type float and positive
+	'''
 	x = safe_cast(val, float)
 	return (x is not None) and x>0.0
 
 def stringify_datetime(num):
+	''' For datetime data: Convert number data to 2-digit string data
+
+	--Parameters:
+		num: int, number to be converted
+	
+	--Return:
+		num of string type if length >=2
+	'''
 	num_str = str(num)
 	if len(num_str)<2:
 		num_str = '0' + num_str
 	return num_str
 
-def sort_extend(stage, key=None):
+def sort_extend(lst, key=None):
+	''' Sort list by timestamp as second element in nested list
+		Ex: [[, 03:50:00,],[, 03:15:00,]] -> [[, 03:15:00,],[, 03:50:00,]]
+
+	--Parameters:
+		lst: list of timestamp data. Ex: [[, 03:50:00,],[, 03:15:00,]]
+	
+	--Return:
+		Sort list of timestamp in ascending order. 
+	'''
 	def get_seconds(x):
 		hms = x[1].split(':')
 		# hms = x[2].split(':') ## use when dir is index 0
 		return hms[0]*60*60+hms[1]*60+hms[2]
-	ans = sorted(stage, key = lambda x: get_seconds(x))
+	ans = sorted(lst, key = lambda x: get_seconds(x))
 	return ans
 
 def file_name_from_date(date):
+	''' Making combined date string from Date object. 
+		Ex: Jan 13th, 2020 -> 20200113
+
+	--Parameters:
+		date: Date, date to parse. 
+	
+	--Return:
+		str, combined date string. 
+	'''
 	d,m,y = str(date.get_day()),str(date.get_month()),str(date.get_year())
 	if len(d) == 1: d = '0'+d
 	if len(m) == 1: m = '0'+m
 	return str(y)+str(m)+str(d)
 
-def generate_fix_regex(cur_date, station='ingramcreek'):
+def generate_fix_regex(cur_date, station):
+	''' Generating fix part of csv file name of given station at specific date
+		Ex: Jan 13th, 2020 at ingramcreek -> ingramcreek_20200113
+
+	--Parameters:
+		cur_date: Date, date 
+		station: str, name of station
+	
+	--Return:
+		str, file name. 
+	'''
 	prev_date = station+'_'+file_name_from_date(cur_date.prev_date())
 	this_date = station+'_'+file_name_from_date(cur_date)
 	next_date = station+'_'+file_name_from_date(cur_date.next_date())
 	return prev_date, this_date, next_date
 
 def is_correct_date(s, cur_date):
+	''' Check whether date from string matched the Date object
+
+	--Parameters:
+		s: str, date string of format mm/dd/yyyy
+		cur_date: Date, other date
+	
+	--Return:
+		True of date string matches the Date object
+	'''
 	check = s.split('/')
 	test = Date(check[0], check[1], check[2])
 	return test == cur_date
 
 def get_file_path(dirname,cur_date,station):
+	''' Generating raw data file name in given directory 
+
+	--Parameters:
+		dirname: str, directory
+		cur_date: Date, date to collect raw data
+		station: str, station name
+	
+	--Return:
+		file_name in string. 
+	'''
 	all_files = os.listdir(dirname)
 
 	prev_datetime, this_datetime, next_datetime = generate_fix_regex(cur_date, station)
@@ -96,10 +210,34 @@ def get_file_path(dirname,cur_date,station):
 	return all_files
 
 def deep_copy(object):
+	''' Return deep copy of an object
+		Used for user-defined class object
+
+	--Parameters:
+		object: object to copy
+	
+	--Return:
+		Newly copied object
+	'''
 	return deepcopy(object)
 
 
 class Station:
+	"""
+    A class used to represent a station
+
+    ...
+
+    --Attributes:
+    cur_date : Date, date of interest
+    dirname_input: str, directory to get raw input .csv files
+    station_name : str, name of the station
+    salt_load_const: float, salt load factor to convert EC to salt load. Ex: satl load = ec*salt loat factor
+    flow_const, weir_width, offset, flow_power: float, factors in flow equation. flow = flow_const*weir_width*((stage-offset)^flow_power)
+    temp_name: str, name of parameters in .csv file. Ex: HO_EC_IS
+    report: list, list of all raw data points from a given day
+       
+    """
 	def __init__(self, cur_date, station_info, dirname_in_out):
 		self.cur_date = cur_date
 		self.dirname_input = dirname_in_out['input']
@@ -115,6 +253,14 @@ class Station:
 		self.report = self.init_report()
 
 	def init_report(self):
+		''' Initializing raw data points list
+
+		--Parameters:
+			None
+
+		--Return:
+			a nested list
+		'''
 		report = [['date(mm/dd/yyyy)','time(h:m:s)','temp(F)','ec(uS/cm)','stage(ft)']]
 		for h in range(0,24,1):
 			for m in range(0,60,15):
@@ -125,6 +271,16 @@ class Station:
 		return report
 
 	def get_temp_ec_stage_name(self):
+		''' Getting parameters name from station name
+
+		--Parameters:
+			None
+			
+		--Return:
+			temp_name: str, <station>_temp_IS
+			ec_name: str, <station>_EC_IS
+			stage_name: str, <station>_stage_DA
+		'''
 		temp_name = ec_name = stage_name = None
 		if self.station_name == 'hospitalcreek':
 			ec_name = 'HO_EC_IS'
@@ -137,43 +293,86 @@ class Station:
 		return temp_name, ec_name, stage_name
 
 	def report_helper(self, h,m_idx, rows):
+		''' Check whether a data point is already found and populate list with raw data points of a given date
+
+		--Parameters:
+			h: int, hour
+			m_index: int, minute order
+			rows: data row read for .csv raw data files
+			
+		--Return:
+			a nested list
+		'''
 		report_index = h*4+m_idx+1
 		self.report[report_index][1] = rows[1]
 		if self.temp_name in rows:
-			if self.report[report_index][2] is not None: #!= 'NOT_RECORDED':
+			if self.report[report_index][2] is not None: 
 				print('{} {} temp is repeated'.format(rows[0], rows[1]))
 				print(self.report[report_index][2])
 				print(rows[3])
 			self.report[report_index][2] = rows[3] #safe_cast(rows[3], float) #
 		elif self.ec_name in rows:
-			if self.report[report_index][3] is not None: #!= 'NOT_RECORDED':
+			if self.report[report_index][3] is not None: 
 				print('{} {} ec is repeated'.format(rows[0], rows[1]))
 				print(self.report[report_index][3])
 				print(rows[3])
 			self.report[report_index][3] = rows[3] #safe_cast(rows[3], float) #
 		elif self.stage_name in rows:
-			if self.report[report_index][4] is not None:# != 'NOT_RECORDED':
+			if self.report[report_index][4] is not None:
 				print('{} {} stage is repeated'.format(rows[0], rows[1]))
 				print(self.report[report_index][4])
 				print(rows[3])
 			self.report[report_index][4] = rows[3] #safe_cast(rows[3], float) #
 
 	def salt_load_calc(self, x):
+		''' Calculate salt load from ec data
+
+		--Parameters:
+			x: float, EC data
+			
+		--Return:
+			salt load (uS/cm): float
+		'''
 		return x*self.salt_load_const
 
 	def flow_calc(self, x):
+		''' Calculate flow from stage data
+
+		--Parameters:
+			x: float, stage
+			
+		--Return:
+			flow: float
+		'''
 		return self.flow_const*self.weir_width*((x-self.offset)**self.flow_power)
 
 	def stddev(self, lst):
+		''' Calculate standard deviation from a given list
+
+		--Parameters:
+			lst: list, list of data 
+			
+		--Return:
+			standard deviation: float
+		'''
 		mean = float(sum(lst)) / len(lst)
 		return sqrt(float(reduce(lambda x, y: x + y, map(lambda x: (x - mean) ** 2, lst))) / len(lst))
 
 	def collect_raw_data(self):
+		''' Collect raw data points of a given day
+
+		--Parameters:
+			None
+			
+		--Return:
+			list of 96 data points of a given day
+		'''
 		all_files = get_file_path(self.dirname_input,self.cur_date,self.station_name)
 		min_to_index = [0,15,30,45]
-		print(self.cur_date)
+		# print(self.cur_date)
 
 		for file_name in all_files:
+			print(file_name)
 			with open(file_name, 'r') as infile:
 				csvreader = csv.reader(infile)
 				rows = next(csvreader)
@@ -188,10 +387,18 @@ class Station:
 						if m in min_to_index: 
 							self.report_helper(h, min_to_index.index(m), rows)
 
-
-		write_to_csv(self.report,output=self.dirname_raw_output, mode='w')
+		return self.report
+		# write_to_csv(self.report,output=self.dirname_raw_output, mode='w')
 
 	def calc_daily_stats(self):
+		''' Calculate daily salt load, flow and generate its statistics
+
+		--Parameters:
+			None
+			
+		--Return:
+			average daily salt load, flow and its statistics (mean, min, max, stddev)
+		'''
 		ec_daily = []
 		stage_daily = [] 
 		for timestamp in self.report:
@@ -214,10 +421,23 @@ class Station:
 			flow_daily = list(map(self.flow_calc, stage_daily))
 			daily_stats[0][5:] = [sum(flow_daily)/len(flow_daily), min(flow_daily), max(flow_daily), self.stddev(flow_daily)]
 
-		write_to_csv(daily_stats,output=self.dirname_stats_output, mode='a')
+		return daily_stats
+		# write_to_csv(daily_stats,output=self.dirname_stats_output, mode='a')
 
 class Date:
 	def __init__(self, m,d,y):
+		"""
+	    A class used to represent Date
+
+	    ...
+
+	    --Attributes:
+	    date
+	    month
+	    year
+	    days_per_month
+	    	   
+	    """
 		if isinstance(m,str): m=int(m)
 		if isinstance(d,str): d=int(d)
 		if isinstance(y,str): y=int(y)
@@ -227,27 +447,57 @@ class Date:
 		self.days_per_month = {1:31, 2:28, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31}
 	
 	def get_day(self):
+		''' 
+		--Return: 
+			int, date of the Date object
+		'''
 		return self.date
 	
 	def get_month(self):
+		''' 
+		--Return: 
+			int, month of the Date object
+		'''
 		return self.month
 	
 	def get_year(self):
+		''' 
+		--Return: 
+			int, year of the Date object
+		'''
 		return self.year
 	
 	def __repr__(self): 
+		''' 
+		Overriding printing operation of Date object
+		'''
 		return "%02d/%02d/%04d" % (self.month, self.date, self.year)
 
 	def __str__(self):
+		''' 
+		Overriding printing operation of Date object
+		'''
 		return "%02d/%02d/%04d" % (self.month, self.date, self.year)
 
 	def check_bound_of_month(self, num_days, mode='end'): #1-indexed/ not check leap year yet
+		''' Check if adding days to current date converts it to the start/last date of the month
+
+		--Parameters:
+			num_days: int, number of days
+			mode: str, 'start' or 'end'
+			
+		--Return:
+			True if current date + num_days is the start/last date of the month
+		'''
 		if mode == 'end':
 			return (self.date+num_days) > self.days_per_month[self.month]
 		elif mode == 'start':
 			return (self.date-num_days) <= 0
 	
 	def __add__(self, num_days):
+		''' 
+		Overriding + operation of Date object
+		'''
 		if (not self.check_bound_of_month(num_days, mode='end')):
 			self.date += num_days
 			return self
@@ -262,6 +512,9 @@ class Date:
 		return self
 
 	def __sub__(self, num_days):
+		''' 
+		Overriding - operation of Date object
+		'''
 		if (not self.check_bound_of_month(num_days, mode='start')):
 			self.date -= num_days
 			return self
@@ -275,6 +528,9 @@ class Date:
 		return self
 	
 	def __lt__(self, other):
+		''' 
+		Overriding < operation of Date object
+		'''
 		if self.year > other.get_year():
 			return False
 		elif self.year == other.get_year():
@@ -287,6 +543,9 @@ class Date:
 		else: 
 			return True
 	def __le__(self, other):
+		''' 
+		Overriding <= operation of Date object
+		'''
 		if self.year > other.get_year():
 			return False
 		elif self.year == other.get_year():
@@ -300,12 +559,29 @@ class Date:
 			return True
 	
 	def __eq__(self, other):
+		''' 
+		Overriding = operation of Date object
+		'''
 		return self.date==other.get_day() and self.month==other.get_month() and self.year==other.get_year()
 	
 	def next_date(self):
+		''' 
+		--Parameters:
+			None
+			
+		--Return:
+			Date, next date of current date
+		'''
 		ans = deepcopy(self)
 		return ans+1
 	
 	def prev_date(self):
+		''' 
+		--Parameters:
+			None
+			
+		--Return:
+			Date, previous date of current date
+		'''
 		ans = deepcopy(self)
 		return ans-1
