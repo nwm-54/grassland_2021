@@ -137,6 +137,7 @@ def sort_extend(lst, key=None):
 		Sort list of timestamp in ascending order. 
 	'''
 	def get_seconds(x):
+		# print('in get seconds: ',x)
 		hms = x[1].split(':')
 		# hms = x[2].split(':') ## use when dir is index 0
 		return hms[0]*60*60+hms[1]*60+hms[2]
@@ -238,11 +239,11 @@ class Station:
     report: list, list of all raw data points from a given day
        
     """
-	def __init__(self, cur_date, station_info, dirname_in_out):
+	def __init__(self, cur_date, station_info, dirname_in):
 		self.cur_date = cur_date
-		self.dirname_input = dirname_in_out['input']
-		self.dirname_raw_output = dirname_in_out['raw_output']
-		self.dirname_stats_output = dirname_in_out['stats_output']
+		self.dirname_input = dirname_in
+		# self.dirname_raw_output = dirname_in_out['raw_output']
+		# self.dirname_stats_output = dirname_in_out['stats_output']
 		self.station_name = station_info['name']
 		self.salt_load_const = station_info['salt_load_const']
 		self.flow_const = station_info['flow_const']
