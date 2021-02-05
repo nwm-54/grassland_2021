@@ -373,7 +373,7 @@ class Station:
 		# print(self.cur_date)
 
 		for file_name in all_files:
-			print(file_name)
+			#print(file_name)
 			with open(file_name, 'r') as infile:
 				csvreader = csv.reader(infile)
 				rows = next(csvreader)
